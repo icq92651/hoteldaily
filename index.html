@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房務備品叫貨統計表</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        /* 導覽列樣式 */
+        .nav-bar { max-width: 1400px; margin: 0 auto 15px auto; display: flex; gap: 10px; }
+        .nav-link { padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; }
+        .nav-active { background-color: #3498db; color: white; }
+        .nav-inactive { background-color: #e0e0e0; color: #555; }
+        .nav-inactive:hover { background-color: #d5d5d5; }
+
+        .container { max-width: 1400px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 15px; }
+        .info-box { background-color: #fff3cd; border-left: 5px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 0.95em; color: #856404; line-height: 1.6;}
+        .controls { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; background-color: #e8f4f8; padding: 15px; border-radius: 6px; }
+        select { padding: 8px 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; font-weight: bold; }
+        .quick-input-area { background-color: #f5eef8; border: 1px solid #d2b4de; padding: 15px; border-radius: 6px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .quick-input-area input[type="text"] { flex:1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; font-family: monospace; }
+        .quick-input-area button { padding: 10px 20px; background-color: #8e44ad; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 15px; font-weight:bold; }
+        .quick-input-area button:hover { background-color: #9b59b6; }
+        .export-section { background-color: #eafaf1; border: 2px dashed #2ecc71; padding: 20px; border-radius: 6px; margin-bottom: 20px; text-align: center; }
+        .export-section h3 { margin: 0 0 10px 0; color: #27ae60; font-size: 1.3em; }
+        .export-section p { margin: 0 0 15px 0; color: #555; font-size: 0.95em; }
+        .export-btn { padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; box-shadow: 0 3px 6px rgba(0,0,0,0.1); margin: 0 10px; }
+        .btn-current { background-color: #3498db; color: white; }
+        .btn-current:hover { background-color: #2980b9; transform: translateY(-2px); }
+        .btn-all { background-color: #e67e22; color: white; }
+        .btn-all:hover { background-color: #d35400; transform: translateY(-2px); }
+        #exportFeedback { margin-top: 15px; font-weight: bold; font-size: 1.1em; display: none; }
+        #quickFeedback { font-weight: bold; font-size: 14px; }
+        .flex-container { display: flex; gap: 20px; align-items: flex-start; }
+        .table-section { flex: 1; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+        .section-title { background-color: #2c3e50; color: white; padding: 10px; text-align: center; font-weight: bold; margin: 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 5px; text-align: center; border: 1px solid #ddd; font-size: 14px;}
+        th { background-color: #3498db; color: white; position: sticky; top: 0; z-index: 10;}
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f8ff; }
+        input[type="number"] { width: 55px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 4px; }
+        .order-amount { font-weight: bold; color: #e74c3c; font-size: 1.1em; }
+        .base-amount { font-weight: bold; color: #2980b9; }
+        @media (max-width: 900px) { .flex-container { flex-direction: column; } input[type="number"] { width: 70px; } }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar">
+    <a href="./index.html" class="nav-link nav-active">📋 房務叫貨統計表</a>
+    <a href="./pre-arrival-calc.html" class="nav-link nav-inactive">⚡ 房態房型計算器</a>
+</div>
+
+<div class="container">
+    <h1>房務備品叫貨統計表</h1>
+    
+    <div class="info-box">
+        <strong>💡 彈性備品叫貨換算備註：</strong><br>
+        • 棉花棒、天仁紅茶、愛戀咖啡：1盒/包 = 100入<br>
+        • 捲筒衛生紙：1袋 = 6捲 ／ 1箱 = 96捲<br>
+        • 抽取式面紙：1箱 = 96包
+    </div>
+    
+    <div class="export-section">
+        <h3>📊 Excel 叫貨單快速產出區</h3>
+        <p>一鍵複製 33 個品項的叫貨量，請直接在 Excel 首格按右鍵貼上，數字會自動往下填滿。<br><strong>✨ 數量為 0 的品項，貼上後會自動保持空白！</strong></p>
+        <div>
+            <button class="export-btn btn-current" onclick="exportToExcel('current')">📋 複製【本樓層】叫貨量</button>
+            <button class="export-btn btn-all" onclick="exportToExcel('all')">🚀 複製【全館總計】叫貨量</button>
+        </div>
+        <div id="exportFeedback"></div>
+    </div>
+
+    <div class="quick-input-area">
+        <label for="quickCmd"><strong>⚡ 全能快捷口：</strong></label>
+        <input type="text" id="quickCmd" placeholder="可輸入 13F I 50.20... 或直接 I 10... (支援 ALL 連動指令)" onkeyup="if(event.key === 'Enter') processQuickCommand()">
+        <button onclick="processQuickCommand()">載入數據</button>
+        <span id="quickFeedback"></span>
+    </div>
+
+    <div class="controls">
+        <label for="floorSelect"><strong>目前檢視樓層：</strong></label>
+        <select id="floorSelect" onchange="renderTables()">
+            <option value="13樓">13樓</option>
+            <option value="12樓">12樓</option>
+            <option value="11樓">11樓</option>
+            <option value="10樓">10樓</option>
+            <option value="9樓">9樓</option>
+            <option value="8樓">8樓</option>
+            <option value="7樓">7樓</option>
+            <option value="6樓">6樓</option>
+            <option value="5樓">5樓</option>
+            <option value="3樓">3樓</option>
+            <option value="2樓">2樓</option>
+        </select>
+    </div>
+
+    <div class="flex-container">
+        <div class="table-section">
+            <div class="section-title">🧺 布巾類 (自動計算叫貨量)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>品項</th>
+                        <th>一轉量</th>
+                        <th>目前量</th>
+                        <th>退房加續住量</th>
+                        <th>建議叫貨</th>
+                    </tr>
+                </thead>
+                <tbody id="linensBody"></tbody>
+            </table>
+        </div>
+
+        <div class="table-section">
+            <div class="section-title">🧴 彈性備品 (手動決定叫貨量)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>品項</th>
+                        <th>一轉量</th>
+                        <th>目前量</th>
+                        <th>叫貨量</th>
+                    </tr>
+                </thead>
+                <tbody id="amenitiesBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const linensItems = ["大毛", "中毛", "足布", "枕套", "大抹布", "中抹布", "床單藍", "床單黃", "床單紅", "被套藍", "被套黃", "被套紅"];
+    const amenitiesItems = ["礦泉水", "捲筒", "棉花棒", "牙膏", "牙刷", "浴帽", "扁梳", "刮鬍刀", "天仁紅茶", "愛戀咖啡", "抽取式面紙", "絨布拖鞋", "沐浴乳", "洗潤髮乳", "漱口杯", "馬克杯", "大垃圾袋", "小垃圾袋", "菜瓜布", "集塵袋", "鉛筆"];
+
+    const baseQuotas = {
+        "13樓": {"大毛": 50, "中毛": 50, "足布": 10, "枕套": 70, "大抹布": 14, "中抹布": 14, "床單藍": 18, "床單黃": 5, "床單紅": 5, "被套藍": 18, "被套黃": 5, "被套紅": 5, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "12樓": {"大毛": 50, "中毛": 50, "足布": 10, "枕套": 80, "大抹布": 16, "中抹布": 16, "床單藍": 21, "床單黃": 0, "床單紅": 5, "被套藍": 21, "被套黃": 0, "被套紅": 5, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "11樓": {"大毛": 50, "中毛": 50, "足布": 20, "枕套": 100, "大抹布": 18, "中抹布": 18, "床單藍": 19, "床單黃": 2, "床單紅": 10, "被套藍": 19, "被套黃": 2, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "10樓": {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 19, "床單黃": 18, "床單紅": 10, "被套藍": 19, "被套黃": 18, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "9樓":  {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 19, "床單黃": 18, "床單紅": 10, "被套藍": 19, "被套黃": 18, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "8樓":  {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 19, "床單黃": 17, "床單紅": 10, "被套藍": 19, "被套黃": 17, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "7樓":  {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 19, "床單黃": 18, "床單紅": 10, "被套藍": 19, "被套黃": 18, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "6樓":  {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 6, "床單黃": 29, "床單紅": 10, "被套藍": 6, "被套黃": 29, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "5樓":  {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 6, "床單黃": 28, "床單紅": 10, "被套藍": 6, "被套黃": 28, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "3樓":  {"大毛": 70, "中毛": 70, "足布": 20, "枕套": 150, "大抹布": 18, "中抹布": 18, "床單藍": 6, "床單黃": 29, "床單紅": 10, "被套藍": 6, "被套黃": 29, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0},
+        "2樓":  {"大毛": 60, "中毛": 60, "足布": 20, "枕套": 120, "大抹布": 15, "中抹布": 15, "床單藍": 6, "床單黃": 23, "床單紅": 10, "被套藍": 6, "被套黃": 23, "被套紅": 10, "礦泉水": 0, "捲筒": 0, "棉花棒": 0, "牙膏": 0, "牙刷": 0, "浴帽": 0, "扁梳": 0, "刮鬍刀": 0, "天仁紅茶": 0, "愛戀咖啡": 0, "抽取式面紙": 0, "絨布拖鞋": 0, "沐浴乳": 0, "洗潤髮乳": 0, "漱口杯": 0, "馬克杯": 0, "大垃圾袋": 0, "小垃圾袋": 0, "菜瓜布": 0, "集塵袋": 0, "鉛筆": 0}
+    };
+
+    Object.keys(baseQuotas).forEach(floor => {
+        const floorNum = parseInt(floor);
+        if (floorNum >= 2 && floorNum <= 11) {
+            baseQuotas[floor]["捲筒"] = 30;
+        } else if (floorNum === 12 || floorNum === 13) {
+            baseQuotas[floor]["捲筒"] = 18;
+        }
+    });
+
+    const globalDataStore = {};
+    Object.keys(baseQuotas).forEach(floor => {
+        globalDataStore[floor] = { linens: {}, amenities: {} };
+        linensItems.forEach(item => globalDataStore[floor].linens[item] = { current: 0, expected: 0 });
+        amenitiesItems.forEach(item => globalDataStore[floor].amenities[item] = { current: 0, order: 0 });
+    });
+
+    function renderTables() {
+        const selectedFloor = document.getElementById("floorSelect").value;
+        const currentFloorQuotas = baseQuotas[selectedFloor];
+        const floorData = globalDataStore[selectedFloor];
+
+        const linensBody = document.getElementById("linensBody");
+        linensBody.innerHTML = "";
+        
+        linensItems.forEach((item, index) => {
+            const baseValue = currentFloorQuotas[item];
+            const state = floorData.linens[item];
+            const orderAmount = Math.max(0, baseValue - (state.current - state.expected));
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${item}</td>
+                <td class="base-amount">${baseValue}</td>
+                <td><input type="number" id="current-linen-${index}" value="${state.current}" min="0" oninput="updateLinenState(${index}, '${item}')"></td>
+                <td><input type="number" id="expected-linen-${index}" value="${state.expected}" min="0" oninput="updateLinenState(${index}, '${item}')"></td>
+                <td class="order-amount" id="order-linen-${index}">${orderAmount}</td>
+            `;
+            linensBody.appendChild(row);
+        });
+
+        const amenitiesBody = document.getElementById("amenitiesBody");
+        amenitiesBody.innerHTML = "";
+        
+        amenitiesItems.forEach((item, index) => {
+            const baseValue = currentFloorQuotas[item];
+            const state = floorData.amenities[item];
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${item}</td>
+                <td class="base-amount">${baseValue}</td>
+                <td><input type="number" id="current-amenity-${index}" value="${state.current}" min="0" oninput="updateAmenityState(${index}, '${item}')"></td>
+                <td><input type="number" class="order-amount" id="order-amenity-${index}" value="${state.order}" min="0" oninput="updateAmenityState(${index}, '${item}')"></td>
+            `;
+            amenitiesBody.appendChild(row);
+        });
+        
+        document.getElementById("quickFeedback").textContent = "";
+        document.getElementById("quickCmd").value = "";
+    }
+
+    function updateLinenState(index, itemName) {
+        const selectedFloor = document.getElementById("floorSelect").value;
+        const currentVal = parseInt(document.getElementById(`current-linen-${index}`).value) || 0;
+        const expectedVal = parseInt(document.getElementById(`expected-linen-${index}`).value) || 0;
+        
+        globalDataStore[selectedFloor].linens[itemName].current = currentVal;
+        globalDataStore[selectedFloor].linens[itemName].expected = expectedVal;
+
+        const baseAmount = baseQuotas[selectedFloor][itemName];
+        document.getElementById(`order-linen-${index}`).textContent = Math.max(0, baseAmount - (currentVal - expectedVal));
+    }
+
+    function updateAmenityState(index, itemName) {
+        const selectedFloor = document.getElementById("floorSelect").value;
+        globalDataStore[selectedFloor].amenities[itemName].current = parseInt(document.getElementById(`current-amenity-${index}`).value) || 0;
+        globalDataStore[selectedFloor].amenities[itemName].order = parseInt(document.getElementById(`order-amenity-${index}`).value) || 0;
+    }
+
+    function processQuickCommand() {
+        const inputStr = document.getElementById("quickCmd").value.trim();
+        const upperStr = inputStr.toUpperCase();
+        const feedback = document.getElementById("quickFeedback");
+        
+        if (!inputStr) return;
+
+        if (upperStr.startsWith("ALL ")) {
+            const payload = inputStr.substring(4).trim();
+            const floorBlocks = payload.split('|');
+            let successFloors = 0;
+
+            floorBlocks.forEach(block => {
+                const parts = block.split(':');
+                if(parts.length !== 2) return;
+                const floorName = parts[0];
+                const dataStr = parts[1];
+                if (!globalDataStore[floorName]) return;
+
+                const numbers = dataStr.split('.');
+                numbers.forEach((numStr, index) => {
+                    if (index >= linensItems.length) return;
+                    const parsedNum = parseInt(numStr);
+                    if (!isNaN(parsedNum)) {
+                        globalDataStore[floorName].linens[linensItems[index]].expected = parsedNum;
+                    }
+                });
+                successFloors++;
+            });
+
+            feedback.style.color = "#8e44ad";
+            feedback.textContent = `成功載入 ${successFloors} 個樓層的退房加續住數據！`;
+            document.getElementById("quickCmd").value = "";
+            renderTables();
+            setTimeout(() => { feedback.textContent = ""; }, 4000);
+            return;
+        }
+
+        const parts = inputStr.split(/\s+/);
+        if (parts.length < 2) {
+            feedback.style.color = "#e74c3c"; feedback.textContent = "格式不完整"; return;
+        }
+
+        let targetFloor = document.getElementById("floorSelect").value;
+        let cmdIndex = 0;
+
+        const firstPart = parts[0].toUpperCase();
+        if (firstPart !== "I" && firstPart !== "A") {
+            let floorStr = firstPart.replace('F', '樓');
+            if (!floorStr.includes('樓')) floorStr += '樓';
+
+            if (globalDataStore[floorStr]) {
+                targetFloor = floorStr;
+                cmdIndex = 1;
+            } else {
+                feedback.style.color = "#e74c3c"; feedback.textContent = "找不到指定的樓層：" + firstPart; return;
+            }
+        }
+
+        if (parts.length <= cmdIndex + 1) {
+            feedback.style.color = "#e74c3c"; feedback.textContent = "格式不完整，缺少指令或數字"; return;
+        }
+
+        const cmd = parts[cmdIndex].toUpperCase();
+        const numStr = parts[cmdIndex + 1];
+        
+        if (cmd !== "I" && cmd !== "A") {
+            feedback.style.color = "#e74c3c"; feedback.textContent = "請使用 I 或 A 作為指令"; return;
+        }
+
+        const numbers = numStr.split('.');
+        let count = 0;
+
+        numbers.forEach((num, index) => {
+            if (index >= linensItems.length) return;
+            const parsedNum = parseInt(num);
+            if (isNaN(parsedNum)) return;
+
+            if (cmd === "I") {
+                globalDataStore[targetFloor].linens[linensItems[index]].current = parsedNum;
+            } else if (cmd === "A") {
+                globalDataStore[targetFloor].linens[linensItems[index]].expected = parsedNum;
+            }
+            count++;
+        });
+
+        document.getElementById("floorSelect").value = targetFloor;
+        renderTables();
+
+        feedback.style.color = "#27ae60";
+        feedback.textContent = `成功寫入 【${targetFloor}】 的 ${count} 筆資料！`;
+        document.getElementById("quickCmd").value = "";
+        setTimeout(() => { feedback.textContent = ""; }, 3000);
+    }
+
+    function exportToExcel(type) {
+        const feedback = document.getElementById("exportFeedback");
+        const allItems = [...linensItems, ...amenitiesItems];
+        let results = [];
+
+        if (type === 'current') {
+            const floor = document.getElementById("floorSelect").value;
+            allItems.forEach(item => {
+                let val = 0;
+                if (linensItems.includes(item)) {
+                    const base = baseQuotas[floor][item];
+                    const state = globalDataStore[floor].linens[item];
+                    val = Math.max(0, base - (state.current - state.expected));
+                } else {
+                    val = globalDataStore[floor].amenities[item].order || 0;
+                }
+                results.push(val === 0 ? "" : val);
+            });
+            feedback.innerHTML = `幕✅ 已成功複製 <strong>【${floor}】</strong> 的 33 項叫貨數量！<br>請前往 Excel 直接貼上即可。`;
+            feedback.style.color = "#2980b9";
+        } 
+        else if (type === 'all') {
+            allItems.forEach(item => {
+                let totalForThisItem = 0;
+                Object.keys(baseQuotas).forEach(floor => {
+                    if (linensItems.includes(item)) {
+                        const base = baseQuotas[floor][item];
+                        const state = globalDataStore[floor].linens[item];
+                        totalForThisItem += Math.max(0, base - (state.current - state.expected));
+                    } else {
+                        totalForThisItem += (globalDataStore[floor].amenities[item].order || 0);
+                    }
+                });
+                results.push(totalForThisItem === 0 ? "" : totalForThisItem);
+            });
+            feedback.innerHTML = `🚀 已成功加總並複製 <strong>【全館總計】</strong> 的 33 項叫貨數量！<br>請前往 Excel 直接貼上即可。`;
+            feedback.style.color = "#d35400";
+        }
+
+        const copyStr = results.join('\n');
+        
+        navigator.clipboard.writeText(copyStr).then(() => {
+            feedback.style.display = "block";
+            setTimeout(() => { feedback.style.display = "none"; }, 5000);
+        }).catch(err => {
+            alert("複製失敗，請檢查權限！");
+        });
+    }
+
+    window.onload = function() {
+        renderTables();
+    };
+</script>
+
+</body>
+</html>
