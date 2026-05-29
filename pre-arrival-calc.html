@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>預進房與續住房 - 布巾自動計算表</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1300px; margin: 0 auto; display: flex; gap: 20px; align-items: flex-start; }
+        
+        /* 快捷指令區 */
+        .quick-input-area { max-width: 1300px; margin: 0 auto 20px auto; background-color: #eaf2f8; border: 1px solid #a9cce3; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .quick-input-area input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; font-family: monospace; }
+        .quick-input-area button { padding: 10px 20px; background-color: #2980b9; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; }
+        .quick-input-area button:hover { background-color: #3498db; }
+        #roomCmdFeedback { font-weight: bold; font-size: 15px; }
+
+        .selection-panel { flex: 1; background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-height: 80vh; overflow-y: auto; }
+        .floor-group { margin-bottom: 10px; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+        .floor-header { background-color: #2c3e50; color: white; padding: 12px 15px; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .floor-header:hover { background-color: #34495e; }
+        .room-list { padding: 15px; display: none; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; background-color: #f8f9fa; }
+        .room-list.active { display: grid; }
+        .room-item { background: #fff; border: 1px solid #ced4da; padding: 10px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .room-info { display: flex; flex-direction: column; gap: 4px; }
+        .room-id { font-size: 1.1em; font-weight: bold; color: #2c3e50; }
+        .room-type { font-size: 0.8em; color: #7f8c8d; background: #ecf0f1; padding: 2px 6px; border-radius: 3px; display: inline-block; }
+        .status-toggle { display: flex; border: 1px solid #bdc3c7; border-radius: 4px; overflow: hidden; }
+        .status-toggle input[type="radio"] { display: none; }
+        .status-toggle label { padding: 6px 10px; font-size: 0.9em; cursor: pointer; background: #f8f9fa; color: #7f8c8d; border-right: 1px solid #bdc3c7; transition: 0.2s; }
+        .status-toggle label:last-child { border-right: none; }
+        .status-toggle label:hover { background: #e9ecef; }
+        .status-toggle input[value="none"]:checked + label { background: #e0e0e0; color: #333; font-weight: bold; }
+        .status-toggle input[value="full"]:checked + label { background: #e74c3c; color: #fff; font-weight: bold; }
+        .status-toggle input[value="partial"]:checked + label { background: #f39c12; color: #fff; font-weight: bold; }
+        .summary-panel { flex: 0 0 380px; background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 20px; }
+        .summary-header { border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 15px; }
+        .summary-header h2 { margin: 0 0 10px 0; color: #2980b9; font-size: 1.4em; }
+        .floor-select-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .floor-select-wrap select { flex: 1; padding: 8px; font-size: 16px; border-radius: 4px; border: 1px solid #3498db; color: #2c3e50; font-weight: bold; }
+        .stat-card { background: #f8f9fa; border-left: 5px solid #3498db; padding: 12px; margin-bottom: 12px; border-radius: 4px; }
+        .stat-card h3 { margin: 0 0 8px 0; font-size: 1.05em; color: #2c3e50; }
+        .stat-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #ddd; font-size: 1.05em; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-val { font-weight: bold; font-size: 1.1em; color: #e67e22; }
+        .color-b { color: #2980b9; } .color-y { color: #d35400; } .color-r { color: #c0392b; }
+        .cmd-section { margin-top: 20px; padding-top: 15px; border-top: 2px dashed #bdc3c7; text-align: center; }
+        .copy-all-btn { width: 100%; background-color: #8e44ad; color: white; border: none; padding: 15px; border-radius: 6px; font-size: 1.2em; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(142,68,173,0.3); animation: pulse 2s infinite; }
+        .copy-all-btn:hover { background-color: #9b59b6; transform: translateY(-2px); }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(142,68,173,0.4); } 70% { box-shadow: 0 0 0 10px rgba(142,68,173,0); } 100% { box-shadow: 0 0 0 0 rgba(142,68,173,0); } }
+        #cmdResult { margin-top: 10px; font-family: monospace; font-size: 1.1em; color: #2c3e50; background: #f4ecf7; padding: 8px; border-radius: 4px; display: none; word-break: break-all; border: 1px solid #d2b4de; }
+        h1 { width: 100%; text-align: center; color: #2c3e50; margin-top: 0; }
+        .header-wrapper { width: 100%; max-width: 1300px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; }
+        .reset-btn { background-color: #95a5a6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .reset-btn:hover { background-color: #7f8c8d; }
+        @media (max-width: 1000px) { .container { flex-direction: column; } .summary-panel { width: auto; position: static; } }
+    </style>
+</head>
+<body>
+
+<div class="header-wrapper">
+    <h1>📝 預進房與續住房統計系統</h1>
+    <button class="reset-btn" onclick="resetAll()">重設所有資料</button>
+</div>
+
+<div class="quick-input-area">
+    <label for="roomCmdInput"><strong>⚡ 狀態批次指令：</strong></label>
+    <input type="text" id="roomCmdInput" placeholder="範例: 1301-1302 C 1305 S 1306 N (C=全換, S=續掃, N=無)" onkeyup="if(event.key === 'Enter') processRoomCommand()">
+    <button onclick="processRoomCommand()">一鍵套用</button>
+    <span id="roomCmdFeedback"></span>
+</div>
+
+<div class="container">
+    <div class="selection-panel" id="floorContainer"></div>
+
+    <div class="summary-panel">
+        <div class="summary-header">
+            <h2>📊 單樓層數量統計</h2>
+            <div class="floor-select-wrap">
+                <label>目前檢視：</label>
+                <select id="summaryFloorSelect" onchange="updateSummary()"></select>
+            </div>
+        </div>
+
+        <div class="stat-card" style="border-left-color: #34495e;">
+            <h3>🛏️ 床單與被套 (套)</h3>
+            <div class="stat-row color-b"><span>藍色 (B)</span> <span class="stat-val" id="total-B">0</span></div>
+            <div class="stat-row color-y"><span>黃色 (Y)</span> <span class="stat-val" id="total-Y">0</span></div>
+            <div class="stat-row color-r"><span>紅色 (R)</span> <span class="stat-val" id="total-R">0</span></div>
+        </div>
+
+        <div class="stat-card" style="border-left-color: #27ae60;">
+            <h3>🧺 毛巾與抹布類</h3>
+            <div class="stat-row"><span>大毛</span> <span class="stat-val" id="total-bigTowel">0</span></div>
+            <div class="stat-row"><span>中毛</span> <span class="stat-val" id="total-midTowel">0</span></div>
+            <div class="stat-row"><span>足布</span> <span class="stat-val" id="total-footMat">0</span></div>
+            <div class="stat-row" style="color:#16a085;"><span>大抹布</span> <span class="stat-val" id="total-bigRag">0</span></div>
+            <div class="stat-row" style="color:#16a085;"><span>中抹布</span> <span class="stat-val" id="total-midRag">0</span></div>
+        </div>
+
+        <div class="stat-card" style="border-left-color: #e67e22;">
+            <h3>😴 枕套</h3>
+            <div class="stat-row"><span>枕套總計</span> <span class="stat-val" id="total-pillow">0</span></div>
+        </div>
+
+        <div class="cmd-section">
+            <button class="copy-all-btn" onclick="copyAllCommand()">🚀 產生全樓層連動指令</button>
+            <div id="cmdResult"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const roomRules = {
+        "G":   { linens: {B:2, Y:0, R:0}, towels: {big:4, mid:4, foot:1}, pillows: 8 },
+        "FJ":  { linens: {B:2, Y:0, R:0}, towels: {big:4, mid:4, foot:1}, pillows: 8 },
+        "EH":  { linens: {B:2, Y:0, R:0}, towels: {big:4, mid:4, foot:1}, pillows: 8 },
+        "BB":  { linens: {B:0, Y:1, R:0}, towels: {big:2, mid:2, foot:1}, pillows: 4 },
+        "CCD": { linens: {B:1, Y:0, R:0}, towels: {big:2, mid:2, foot:1}, pillows: 4 },
+        "CAB": { linens: {B:0, Y:0, R:2}, towels: {big:2, mid:2, foot:1}, pillows: 4 },
+        "DB":  { linens: {B:0, Y:2, R:0}, towels: {big:4, mid:4, foot:1}, pillows: 8 },
+        "K":   { linens: {B:1, Y:2, R:0}, towels: {big:6, mid:6, foot:2}, pillows: 12 },
+        "DA_2Y":   { linens: {B:0, Y:2, R:0}, towels: {big:4, mid:4, foot:1}, pillows: 8 },
+        "DA_1Y1B": { linens: {B:1, Y:1, R:0}, towels: {big:4, mid:4, foot:1}, pillows: 8 }
+    };
+
+    const hotelData = {
+        "13樓": [ { id: "1308", type: "EH", rule: "EH" }, { id: "1307", type: "FJ", rule: "FJ" }, { id: "1306", type: "G", rule: "G" }, { id: "1305", type: "G", rule: "G" }, { id: "1303", type: "K", rule: "K" }, { id: "1302", type: "G", rule: "G" }, { id: "1301", type: "G", rule: "G" } ],
+        "12樓": [ { id: "1209", type: "EH", rule: "EH" }, { id: "1208", type: "FJ", rule: "FJ" }, { id: "1207", type: "G", rule: "G" }, { id: "1206", type: "G", rule: "G" }, { id: "1205", type: "EH", rule: "EH" }, { id: "1203", type: "FJ", rule: "FJ" }, { id: "1202", type: "G", rule: "G" }, { id: "1201", type: "G", rule: "G" } ],
+        "11樓": [ { id: "1120", type: "CCD", rule: "CCD" }, { id: "1119", type: "CAB", rule: "CAB" }, { id: "1118", type: "CCD", rule: "CCD" }, { id: "1117", type: "CCD", rule: "CCD" }, { id: "1116", type: "CCD", rule: "CCD" }, { id: "1115", type: "CCD", rule: "CCD" }, { id: "1113", type: "CCD", rule: "CCD" }, { id: "1112", type: "CCD", rule: "CCD" }, { id: "1111", type: "CCD", rule: "CCD" }, { id: "1110", type: "CCD", rule: "CCD" }, { id: "1109", type: "CAB", rule: "CAB" }, { id: "1108", type: "CAB", rule: "CAB" }, { id: "1107", type: "CCD", rule: "CCD" }, { id: "1106", type: "BB", rule: "BB" }, { id: "1105", type: "CCD", rule: "CCD" }, { id: "1103", type: "CCD", rule: "CCD" }, { id: "1102", type: "CCD", rule: "CCD" }, { id: "1101", type: "CCD", rule: "CCD" } ],
+        "10樓": [ { id: "1020", type: "CCD", rule: "CCD" }, { id: "1019", type: "CAB", rule: "CAB" }, { id: "1018", type: "CCD", rule: "CCD" }, { id: "1017", type: "DA", rule: "DA_1Y1B" }, { id: "1016", type: "DA", rule: "DA_1Y1B" }, { id: "1015", type: "DA", rule: "DA_1Y1B" }, { id: "1013", type: "DA", rule: "DA_1Y1B" }, { id: "1012", type: "DA", rule: "DA_1Y1B" }, { id: "1011", type: "DA", rule: "DA_1Y1B" }, { id: "1010", type: "DA", rule: "DA_1Y1B" }, { id: "1009", type: "CAB", rule: "CAB" }, { id: "1008", type: "CAB", rule: "CAB" }, { id: "1007", type: "CCD", rule: "CCD" }, { id: "1006", type: "DA", rule: "DA_2Y" }, { id: "1005", type: "DA", rule: "DA_1Y1B" }, { id: "1003", type: "DA", rule: "DA_1Y1B" }, { id: "1002", type: "DA", rule: "DA_1Y1B" }, { id: "1001", type: "DA", rule: "DA_1Y1B" } ],
+        "9樓":  [ { id: "920", type: "CCD", rule: "CCD" }, { id: "919", type: "CAB", rule: "CAB" }, { id: "918", type: "CCD", rule: "CCD" }, { id: "917", type: "DA", rule: "DA_1Y1B" }, { id: "916", type: "DA", rule: "DA_1Y1B" }, { id: "915", type: "DA", rule: "DA_1Y1B" }, { id: "913", type: "DA", rule: "DA_1Y1B" }, { id: "912", type: "DA", rule: "DA_1Y1B" }, { id: "911", type: "DA", rule: "DA_1Y1B" }, { id: "910", type: "DA", rule: "DA_1Y1B" }, { id: "909", type: "CAB", rule: "CAB" }, { id: "908", type: "CAB", rule: "CAB" }, { id: "907", type: "CCD", rule: "CCD" }, { id: "906", type: "DA", rule: "DA_2Y" }, { id: "905", type: "DA", rule: "DA_1Y1B" }, { id: "903", type: "DA", rule: "DA_1Y1B" }, { id: "902", type: "DA", rule: "DA_1Y1B" }, { id: "901", type: "DA", rule: "DA_1Y1B" } ],
+        "8樓":  [ { id: "820", type: "CCD", rule: "CCD" }, { id: "819", type: "CAB", rule: "CAB" }, { id: "818", type: "CCD", rule: "CCD" }, { id: "817", type: "DA", rule: "DA_1Y1B" }, { id: "816", type: "DA", rule: "DA_1Y1B" }, { id: "815", type: "DA", rule: "DA_1Y1B" }, { id: "813", type: "DA", rule: "DA_1Y1B" }, { id: "812", type: "DA", rule: "DA_1Y1B" }, { id: "811", type: "DA", rule: "DA_1Y1B" }, { id: "810", type: "DA", rule: "DA_1Y1B" }, { id: "809", type: "CAB", rule: "CAB" }, { id: "808", type: "CAB", rule: "CAB" }, { id: "807", type: "CCD", rule: "CCD" }, { id: "806", type: "BB", rule: "BB" }, { id: "805", type: "DA", rule: "DA_1Y1B" }, { id: "803", type: "DA", rule: "DA_1Y1B" }, { id: "802", type: "DA", rule: "DA_1Y1B" }, { id: "801", type: "DA", rule: "DA_1Y1B" } ],
+        "7樓":  [ { id: "720", type: "CCD", rule: "CCD" }, { id: "719", type: "CAB", rule: "CAB" }, { id: "718", type: "CCD", rule: "CCD" }, { id: "717", type: "DA", rule: "DA_1Y1B" }, { id: "716", type: "DA", rule: "DA_1Y1B" }, { id: "715", type: "DA", rule: "DA_1Y1B" }, { id: "713", type: "DA", rule: "DA_1Y1B" }, { id: "712", type: "DA", rule: "DA_1Y1B" }, { id: "711", type: "DA", rule: "DA_1Y1B" }, { id: "710", type: "DA", rule: "DA_1Y1B" }, { id: "709", type: "CAB", rule: "CAB" }, { id: "708", type: "CAB", rule: "CAB" }, { id: "707", type: "CCD", rule: "CCD" }, { id: "706", type: "DA", rule: "DA_2Y" }, { id: "705", type: "DA", rule: "DA_1Y1B" }, { id: "703", type: "DA", rule: "DA_1Y1B" }, { id: "702", type: "DA", rule: "DA_1Y1B" }, { id: "701", type: "DA", rule: "DA_1Y1B" } ],
+        "6樓":  [ { id: "620", type: "CCD", rule: "CCD" }, { id: "619", type: "CAB", rule: "CAB" }, { id: "618", type: "CCD", rule: "CCD" }, { id: "617", type: "DA", rule: "DA_2Y" }, { id: "616", type: "DA", rule: "DA_2Y" }, { id: "615", type: "DA", rule: "DA_2Y" }, { id: "613", type: "DA", rule: "DA_2Y" }, { id: "612", type: "DA", rule: "DA_2Y" }, { id: "611", type: "DA", rule: "DA_2Y" }, { id: "610", type: "DA", rule: "DA_2Y" }, { id: "609", type: "CAB", rule: "CAB" }, { id: "608", type: "CAB", rule: "CAB" }, { id: "607", type: "CCD", rule: "CCD" }, { id: "606", type: "DA", rule: "DA_2Y" }, { id: "605", type: "DA", rule: "DA_2Y" }, { id: "603", type: "DA", rule: "DA_2Y" }, { id: "602", type: "DA", rule: "DA_2Y" }, { id: "601", type: "DA", rule: "DA_2Y" } ],
+        "5樓":  [ { id: "520", type: "CCD", rule: "CCD" }, { id: "519", type: "CAB", rule: "CAB" }, { id: "518", type: "CCD", rule: "CCD" }, { id: "517", type: "DA", rule: "DA_2Y" }, { id: "516", type: "DA", rule: "DA_2Y" }, { id: "515", type: "DA", rule: "DA_2Y" }, { id: "513", type: "DA", rule: "DA_2Y" }, { id: "512", type: "DA", rule: "DA_2Y" }, { id: "511", type: "DA", rule: "DA_2Y" }, { id: "510", type: "DA", rule: "DA_2Y" }, { id: "509", type: "CAB", rule: "CAB" }, { id: "508", type: "CAB", rule: "CAB" }, { id: "507", type: "CCD", rule: "CCD" }, { id: "506", type: "BB", rule: "BB" }, { id: "505", type: "DA", rule: "DA_2Y" }, { id: "503", type: "DA", rule: "DA_2Y" }, { id: "502", type: "DA", rule: "DA_2Y" }, { id: "501", type: "DA", rule: "DA_2Y" } ],
+        "3樓":  [ { id: "320", type: "CCD", rule: "CCD" }, { id: "319", type: "CAB", rule: "CAB" }, { id: "318", type: "CCD", rule: "CCD" }, { id: "317", type: "DA", rule: "DA_2Y" }, { id: "316", type: "DA", rule: "DA_2Y" }, { id: "315", type: "DA", rule: "DA_2Y" }, { id: "313", type: "DA", rule: "DA_2Y" }, { id: "312", type: "DA", rule: "DA_2Y" }, { id: "311", type: "DA", rule: "DA_2Y" }, { id: "310", type: "DA", rule: "DA_2Y" }, { id: "309", type: "CAB", rule: "CAB" }, { id: "308", type: "CAB", rule: "CAB" }, { id: "307", type: "CCD", rule: "CCD" }, { id: "306", type: "DA", rule: "DA_2Y" }, { id: "305", type: "DA", rule: "DA_2Y" }, { id: "303", type: "DA", rule: "DA_2Y" }, { id: "302", type: "DA", rule: "DA_2Y" }, { id: "301", type: "DA", rule: "DA_2Y" } ],
+        "2樓":  [ { id: "217", type: "CCD", rule: "CCD" }, { id: "216", type: "CAB", rule: "CAB" }, { id: "215", type: "CCD", rule: "CCD" }, { id: "213", type: "DA", rule: "DA_2Y" }, { id: "212", type: "DA", rule: "DA_2Y" }, { id: "211", type: "DA", rule: "DA_2Y" }, { id: "210", type: "DA", rule: "DA_2Y" }, { id: "209", type: "DA", rule: "DA_2Y" }, { id: "208", type: "CAB", rule: "CAB" }, { id: "207", type: "CAB", rule: "CAB" }, { id: "206", type: "CCD", rule: "CCD" }, { id: "205", type: "DB", rule: "DB" }, { id: "203", type: "DB", rule: "DB" }, { id: "202", type: "DB", rule: "DB" }, { id: "201", type: "DB", rule: "DB" } ]
+    };
+
+    function renderApp() {
+        const container = document.getElementById("floorContainer");
+        const floorSelect = document.getElementById("summaryFloorSelect");
+        container.innerHTML = ""; floorSelect.innerHTML = "";
+
+        for (const [floor, rooms] of Object.entries(hotelData)) {
+            const option = document.createElement("option");
+            option.value = floor; option.textContent = floor;
+            floorSelect.appendChild(option);
+
+            const groupDiv = document.createElement("div");
+            groupDiv.className = "floor-group";
+            const headerDiv = document.createElement("div");
+            headerDiv.className = "floor-header";
+            headerDiv.innerHTML = `<span>🏢 ${floor}</span> <span>▼</span>`;
+            headerDiv.onclick = () => {
+                const list = groupDiv.querySelector(".room-list");
+                list.classList.toggle("active");
+                headerDiv.querySelector("span:last-child").textContent = list.classList.contains("active") ? "▲" : "▼";
+            };
+
+            const roomListDiv = document.createElement("div");
+            roomListDiv.className = "room-list";
+
+            rooms.forEach(room => {
+                const item = document.createElement("div");
+                item.className = "room-item";
+                item.innerHTML = `
+                    <div class="room-info"><span class="room-id">${room.id} <span class="room-type">${room.type}</span></span></div>
+                    <div class="status-toggle">
+                        <input type="radio" name="state_${room.id}" id="none_${room.id}" value="none" class="room-state" data-floor="${floor}" data-rule="${room.rule}" checked onchange="handleStateChange('${floor}')">
+                        <label for="none_${room.id}">無</label>
+                        <input type="radio" name="state_${room.id}" id="full_${room.id}" value="full" class="room-state" data-floor="${floor}" data-rule="${room.rule}" onchange="handleStateChange('${floor}')">
+                        <label for="full_${room.id}">全換</label>
+                        <input type="radio" name="state_${room.id}" id="partial_${room.id}" value="partial" class="room-state" data-floor="${floor}" data-rule="${room.rule}" onchange="handleStateChange('${floor}')">
+                        <label for="partial_${room.id}">續掃</label>
+                    </div>
+                `;
+                roomListDiv.appendChild(item);
+            });
+            groupDiv.appendChild(headerDiv); groupDiv.appendChild(roomListDiv); container.appendChild(groupDiv);
+        }
+    }
+
+    // 處理上方快捷輸入指令
+    function processRoomCommand() {
+        const input = document.getElementById("roomCmdInput").value.trim().toUpperCase();
+        const feedback = document.getElementById("roomCmdFeedback");
+        if (!input) return;
+
+        const tokens = input.split(/\s+/);
+        let pendingRooms = [];
+        let appliedCount = 0;
+        let lastModifiedFloor = null;
+
+        tokens.forEach(token => {
+            if (token === 'C' || token === 'S' || token === 'N') {
+                const stateVal = token === 'C' ? 'full' : (token === 'S' ? 'partial' : 'none');
+                pendingRooms.forEach(roomId => {
+                    const radio = document.querySelector(`input[name="state_${roomId}"][value="${stateVal}"]`);
+                    if (radio) {
+                        radio.checked = true;
+                        appliedCount++;
+                        lastModifiedFloor = radio.dataset.floor;
+                    }
+                });
+                pendingRooms = []; 
+            } else if (token.includes('-')) {
+                const parts = token.split('-');
+                if (parts.length === 2) {
+                    const start = parseInt(parts[0]);
+                    const end = parseInt(parts[1]);
+                    if (!isNaN(start) && !isNaN(end) && start <= end) {
+                        for (let i = start; i <= end; i++) {
+                            pendingRooms.push(i.toString());
+                        }
+                    }
+                }
+            } else {
+                pendingRooms.push(token);
+            }
+        });
+
+        if (appliedCount > 0) {
+            feedback.style.color = "#27ae60";
+            feedback.textContent = `✅ 成功套用 ${appliedCount} 間房的狀態！`;
+            document.getElementById("roomCmdInput").value = "";
+            if (lastModifiedFloor) {
+                document.getElementById("summaryFloorSelect").value = lastModifiedFloor;
+            }
+            updateSummary();
+        } else {
+            feedback.style.color = "#e74c3c";
+            feedback.textContent = `❌ 格式錯誤，請確認房號與代碼 (C, S, N)`;
+        }
+
+        setTimeout(() => { feedback.textContent = ""; }, 3000);
+    }
+
+    function handleStateChange(floor) {
+        document.getElementById("summaryFloorSelect").value = floor;
+        updateSummary();
+    }
+
+    function getFloorStats(floor) {
+        // 新增 bigRag 和 midRag
+        let stats = { B: 0, Y: 0, R: 0, bigTowel: 0, midTowel: 0, footMat: 0, pillow: 0, bigRag: 0, midRag: 0 };
+        const checkedInputs = document.querySelectorAll(`input.room-state[data-floor="${floor}"]:checked:not([value="none"])`);
+        
+        checkedInputs.forEach(input => {
+            const ruleCode = input.dataset.rule;
+            const state = input.value;
+            const config = roomRules[ruleCode];
+            
+            if (config) {
+                stats.bigTowel += config.towels.big; 
+                stats.midTowel += config.towels.mid; 
+                stats.footMat += config.towels.foot;
+                
+                // 只要有打掃（非無），大抹布和中抹布各加 1
+                stats.bigRag += 1;
+                stats.midRag += 1;
+
+                if (state === 'full') {
+                    stats.B += config.linens.B; 
+                    stats.Y += config.linens.Y; 
+                    stats.R += config.linens.R; 
+                    stats.pillow += config.pillows;
+                }
+            }
+        });
+        return stats;
+    }
+
+    function updateSummary() {
+        const floor = document.getElementById("summaryFloorSelect").value;
+        const stats = getFloorStats(floor);
+        document.getElementById("total-B").textContent = stats.B; 
+        document.getElementById("total-Y").textContent = stats.Y; 
+        document.getElementById("total-R").textContent = stats.R;
+        document.getElementById("total-bigTowel").textContent = stats.bigTowel; 
+        document.getElementById("total-midTowel").textContent = stats.midTowel; 
+        document.getElementById("total-footMat").textContent = stats.footMat;
+        // 更新顯示抹布數量
+        document.getElementById("total-bigRag").textContent = stats.bigRag;
+        document.getElementById("total-midRag").textContent = stats.midRag;
+        document.getElementById("total-pillow").textContent = stats.pillow;
+        document.getElementById("cmdResult").style.display = "none";
+    }
+
+    function copyAllCommand() {
+        let allFloorCommands = [];
+        for (const floor of Object.keys(hotelData)) {
+            const stats = getFloorStats(floor);
+            // 這裡將原本的 0, 0 替換成實際計算出來的 stats.bigRag, stats.midRag
+            const commandArr = [
+                stats.bigTowel, stats.midTowel, stats.footMat, stats.pillow, 
+                stats.bigRag, stats.midRag, 
+                stats.B, stats.Y, stats.R, stats.B, stats.Y, stats.R
+            ];
+            allFloorCommands.push(`${floor}:${commandArr.join('.')}`);
+        }
+        
+        const commandStr = `ALL ${allFloorCommands.join('|')}`;
+        navigator.clipboard.writeText(commandStr).then(() => {
+            const resultDiv = document.getElementById("cmdResult");
+            resultDiv.style.display = "block";
+            resultDiv.innerHTML = `已成功複製 <strong>全樓層連動指令</strong>！<br>請前往「叫貨統計表」貼上！`;
+            
+            const btn = document.querySelector(".copy-all-btn");
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "✅ 已複製！快去貼上";
+            btn.style.backgroundColor = "#2ecc71";
+            btn.style.animation = "none";
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.backgroundColor = "#8e44ad";
+                btn.style.animation = "pulse 2s infinite";
+            }, 3000);
+        }).catch(err => {
+            alert('複製失敗，請檢查瀏覽器權限！');
+        });
+    }
+
+    function resetAll() {
+        if(confirm("確定要清空所有的打掃紀錄嗎？")) {
+            const noneRadios = document.querySelectorAll('input[value="none"]');
+            noneRadios.forEach(radio => radio.checked = true);
+            updateSummary();
+            const lists = document.querySelectorAll(".room-list");
+            lists.forEach(list => list.classList.remove("active"));
+            const headers = document.querySelectorAll(".floor-header span:last-child");
+            headers.forEach(span => span.textContent = "▼");
+        }
+    }
+
+    window.onload = function() { renderApp(); updateSummary(); };
+</script>
+</body>
+</html>
